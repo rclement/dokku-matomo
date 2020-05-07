@@ -11,6 +11,16 @@ which does all of the heavy-lifting to properly deploy Matomo without too much h
 
 We will deploy [Matomo 3.13.5](https://github.com/matomo-org/matomo/releases/tag/3.13.5) onto your own Dokku server.
 
+## Limitations
+
+Currently the following features are not supported:
+
+- GeoIP2
+- Cron
+- Redis cache
+
+Contributions are welcome!
+
 # Requirements
 
 - [Dokku](https://github.com/dokku/dokku)
