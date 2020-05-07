@@ -1,143 +1,144 @@
-# Matomo on Dokku
+# Run Matomo on Dokku
 
 Deploy your own instance of [Matomo](https://matomo.org) on
-[Dokku](https://github.com/dokku/dokku)!
+[Dokku](https://github.com/dokku/dokku).
 
 This setup is makes use of the great ready-to-use
-[Matomo Docker image](https://github.com/crazy-max/docker-matomo) from @crazy-max,
+[`matomo-docker`](https://github.com/crazy-max/docker-matomo) image by [crazy-max](https://github.com/crazy-max),
 which does all of the heavy-lifting to properly deploy Matomo without too much headache.
 
-Current Matomo version: 3.5.1
+## What you get
 
-# Setup
+We will deploy [Matomo 3.13.5](https://github.com/matomo-org/matomo/releases/tag/3.13.5) onto your own Dokku server.
 
-## Requirements
+# Requirements
 
-Be sure to properly setup a [Dokku](https://github.com/dokku/dokku) instance.
-
-The following Dokku plugins need to be installed:
-
+- [Dokku](https://github.com/dokku/dokku)
 - [dokku-mariadb](https://github.com/dokku/dokku-mariadb)
 - [dokku-letsencrypt](https://github.com/dokku/dokku-letsencrypt)
 
+# Setup
+
+## Pull image and tag it
+
+We pull the `matomo` image from Docker Hub and tag it properly for Dokku.
+
+```
+docker pull crazymax/matomo:latest
+docker tag crazymax/matomo:latest dokku/matomo:v3.13.5
+```
+
 ## App and database
 
-1. Create the `matomo` app:
+First create a new Dokku app. We will call it `matomo`.
 
 ```
-    dokku apps:create matomo
+dokku apps:create matomo
 ```
 
-2. Create the mariadb database:
+Next create the MariaDB database required by Matomo.
 
 ```
-    dokku mariadb:create matomo
-    dokku mariadb:link matomo matomo
+dokku mariadb:create mariadb-matomo
 ```
 
-## Setup app
+## Configuration
 
-1. Persistent storage:
-
-First, from the host:
+## Main configuration
 
 ```
-    sudo mkdir -p /var/lib/dokku/data/storage/matomo
-    sudo chown -R 32767 /var/lib/dokku/data/storage/matomo
+dokku config:set --no-restart matomo TZ=Europe/Berlin
+dokku config:set --no-restart matomo MEMORY_LIMIT=256M
+dokku config:set --no-restart matomo UPLOAD_MAX_SIZE=16M
+dokku config:set --no-restart matomo OPCACHE_MEM_SIZE=128
+dokku config:set --no-restart matomo REAL_IP_FROM=0.0.0.0/32
+dokku config:set --no-restart matomo REAL_IP_HEADER=X-Forwarded-For
+dokku config:set --no-restart matomo LOG_LEVEL=WARN
 ```
 
-Then, remotely:
+## Persistent storage
+
+You need to mount a volume on your host (the machine running Dokku) to persist all settings that you set in the Matomo interface.
 
 ```
-    dokku storage:mount /var/lib/dokku/data/storage/matomo:/data
+mkdir /var/lib/dokku/data/storage/matomoo
+# UID:GUID are set to 101. These are the values the nginx image uses,
+# that is used by crazymax/matomo
+chown 101:101 /var/lib/dokku/data/storage/matomo
+dokku storage:mount matomo /var/lib/dokku/data/storage/matomo:/data
 ```
 
-2. Configuration:
+## Domain setup
+
+To get the routing working, we need to apply a few settings. First we set the domain.
 
 ```
-    dokku config:set --no-restart TZ="Europe\/Paris"
-    dokku config:set --no-restart LOG_LEVEL=WARN
-    dokku config:set --no-restart MEMORY_LIMIT=256M
-    dokku config:set --no-restart UPLOAD_MAX_SIZE=16M
-    dokku config:set --no-restart OPCACHE_MEM_SIZE=128
-    dokku config:set --no-restart SSMTP_HOST=smtp.example.com
-    dokku config:set --no-restart SSMTP_PORT=587
-    dokku config:set --no-restart SSMTP_HOSTNAME=matomo.dokku-apps.me
-    dokku config:set --no-restart SSMTP_USER=user@example.com
-    dokku config:set --no-restart SSMTP_PASSWORD=
-    dokku config:set --no-restart SSMTP_TLS=YES
-    dokku config:set --no-restart ARCHIVE_OPTIONS="--concurrent-requests-per-website=3"
-    dokku config:set --no-restart CRON_GEOIP="0\ 2\ \*\ \*\ \*"
-    dokku config:set --no-restart CRON_ARCHIVE="0\ \*\ \*\ \*\ \*"
+dokku domains:set matomo matomo.example.com
 ```
 
-3. Fix proxy ports:
+We also need to update the ports set by Dokku.
 
 ```
-    dokku proxy:ports-add http:80:80
-    dokku proxy:ports-remove http:80:5000
+dokku proxy:ports-add matomo http:80:8000
+dokku proxy:ports-remove matomo http:80:5000
 ```
 
-4. Domain name (optional):
+If Dokku proxy:report sentry shows more than one port mapping, remove all port mappings except the added above.
+
+## Email settings (optional)
+
+You need to set the following settings if you want to receive emails from Matomo.
 
 ```
-    dokku domains:set matomo.dokku-apps.me
+dokku config:set --no-restart SSMTP_HOST=smtp.example.com
+dokku config:set --no-restart SSMTP_PORT=587
+dokku config:set --no-restart SSMTP_HOSTNAME=matomo.example.com
+dokku config:set --no-restart SSMTP_USER=user@example.com
+dokku config:set --no-restart SSMTP_PASSWORD=yoursmtppassword
+dokku config:set --no-restart SSMTP_TLS=YES
 ```
-
-5. HTTPS support (optional, but highly recommended when possible):
-
-```
-    dokku config:set --no-restart matomo DOKKU_LETSENCRYPT_EMAIL=user@example.com
-    dokku letsencrypt matomo
-```
-
-# Deploy
-
-1. Clone this repository:
-
-```
-    git clone https://github.com/rclement/dokku-matomo.git
-```
-
-2. Setup Dokku git remote (with your defined domain):
-
-```
-    git remote add dokku dokku@example.com:matomo
-```
-
-3. Push `matomo`:
-
-```
-    git push dokku master
-```
-
-# Run
-
-`matomo` should be running at `http://matomo.dokku-apps.me` or any domain previously specified.
-Also, archiving and GeoIP update cron tasks will be running in background.
-
-# Post-install configuration
-
-Some extra steps might be required after the deployment:
-
-## Installation wizard
-
-The following features can be configured during the first run:
-
-- Database config (use the configuration from `dokku config:get matomo DATABASE_URL`)
-- Initial user config
-- Initial site config
-
-## Archiving
-
-- Disable "Archive reports when viewed from the browser"
-
-## GeoIP2
-
-- Replace all variables "MM_*" with "GEOIP_*"
-- Enable "GeoIP (HTTP Server Module)"
 
 ## Advanced configuration
 
-If needed, the Matomo configuration file is located at `/var/lib/dokku/data/storage/matomo/config/config.ini.php`
-and can be manually edited.
+If needed, the Matomo configuration file is located at `/var/lib/dokku/data/storage/matomo/config/config.ini.php` and can be manually edited.
+
+# Deploy
+
+## Deploy app for the first time
+
+Deploy Matomo from the previously tagged docker image.
+
+```
+dokku tags:deploy matomo v3.13.5
+```
+
+## Setup Let's Encrypt
+
+Setup an SSL certificate via Let's Encrypt.
+
+```
+dokku config:set --no-restart matomo DOKKU_LETSENCRYPT_EMAIL=letsencrypt@example.com
+dokku letsencrypt matomo
+dokku letsencrypt:auto-renew matomo
+```
+
+# Grep MariaDB information for the setup
+
+We will need to set up Matomo in the web interface and provide the database details. You should be able to access the page via [`https://matomo.example.com`](https://matomo.example.com).
+
+Run the command below to retrieve the DSN.
+
+```
+dokku mariadb:info mariadb-matomo
+```
+
+An example DSN might look like this: `mysql://mariadb:ffd4fc238ba8adb3@dokku-mariadb-mariadb-matomo:3306/mariadb_matomo`. Copy and paste the details as follows:
+
+```
+Hostname: dokku-mariadb-mariadb-matomo
+Username: mariadb
+Password: ffd4fc238ba8adb3
+Database Name: mariadb_matomo
+```
+
+After going through the setup, you should be able to use Matomo.
