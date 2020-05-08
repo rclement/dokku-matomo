@@ -18,8 +18,7 @@ Dokku server.
 
 Currently the following features are not supported:
 
-- GeoIP2
-- Cron
+- Archive via cron
 - Redis cache
 
 Contributions are welcome!
@@ -127,6 +126,12 @@ dokku config:set --no-restart SSMTP_USER=user@example.com
 dokku config:set --no-restart SSMTP_PASSWORD=yoursmtppassword
 dokku config:set --no-restart SSMTP_TLS=YES
 ```
+
+## GeoIP2
+
+The GeoIP2 plugin is already installed but needs to be configured. [Follow the
+instructions in the crazymax/docker-matomo
+repository](https://github.com/crazy-max/docker-matomo#geoip2) to enable it.
 
 ## Advanced configuration
 
