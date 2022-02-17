@@ -11,7 +11,7 @@ to properly deploy Matomo without too much headache.
 ## What you get
 
 We will deploy [Matomo
-3.13.5](https://github.com/matomo-org/matomo/releases/tag/3.13.5) onto your own
+4.7.1](https://github.com/matomo-org/matomo/releases/tag/4.7.1) onto your own
 Dokku server.
 
 ## Limitations
@@ -36,9 +36,9 @@ Updating over the web interface is not supported. The upgrade will result in a
 short downtime of Matomo.
 
 ```
-docker pull crazymax/matomo:3.14.0 # This version does not exist yet, its just an example
-docker tag crazymax/matomo:3.14.0 dokku/matomo:v3.14.0
-dokku tags:deploy matomo v3.14.0
+docker pull crazymax/matomo:4.7.1 # This version does not exist yet, its just an example
+docker tag crazymax/matomo:4.7.1 dokku/matomo:v4.7.1
+dokku git:from-image matomo dokku/matomo:v4.7.1
 ```
 
 # Setup
@@ -48,8 +48,8 @@ dokku tags:deploy matomo v3.14.0
 We pull the `matomo` image from Docker Hub and tag it properly for Dokku.
 
 ```
-docker pull crazymax/matomo:3.13.5
-docker tag crazymax/matomo:3.13.5 dokku/matomo:v3.13.5
+docker pull crazymax/matomo:4.7.1
+docker tag crazymax/matomo:4.7.1 dokku/matomo:v4.7.1
 ```
 
 ## App and database
@@ -146,7 +146,7 @@ edited.
 Deploy Matomo from the previously tagged docker image.
 
 ```
-dokku tags:deploy matomo v3.13.5
+dokku git:from-image matomo dokku/matomo:v4.7.1
 ```
 
 ## Setup Let's Encrypt
